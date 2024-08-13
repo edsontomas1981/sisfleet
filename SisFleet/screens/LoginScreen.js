@@ -24,7 +24,7 @@ export default function LoginScreen({ navigation }) {
         <Button
           icon="login"
           mode="contained"
-          onPress={() => navigation.navigate('Home')} // Correto: Nome da tela no StackNavigator
+          onPress={() => navigation.navigate('Main')} // Correto: Nome da tela no StackNavigator
           style={styles.button}
           labelStyle={styles.buttonLabel}
         >
@@ -46,8 +46,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   logo: {
-    width: 300,
-    height: 300,
+    width: 350,
+    height: 350,
     marginBottom: 20,
   },
   button: {
