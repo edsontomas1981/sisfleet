@@ -42,7 +42,7 @@ export default function TabNavigation() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Viagens" component={TripsScreen} />
+      <Tab.Screen name="Viagens" component={TripsScreen} options={{ headerShown: false }} />
       <Tab.Screen name="Agenda" component={IncomeTab} />
       <Tab.Screen name="Manutenção" component={MaintenanceScreen} />
       <Tab.Screen name="Sair" component={LoginScreen} options={{ headerShown: false }} />
