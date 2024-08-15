@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, Alert, Modal, Button } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { nanoid } from 'nanoid';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 
 export default function IncomeTab() {
   const [cliente, setCliente] = useState('');
@@ -19,20 +19,14 @@ export default function IncomeTab() {
   const [editFrete, setEditFrete] = useState('');
   const [editAdiantamento, setEditAdiantamento] = useState('');
   const [editPeso, setEditPeso] = useState('');
+  const [comprovanteUri, setComprovanteUri] = useState(null);
+  const [isComprovanteModalVisible, setIsComprovanteModalVisible] = useState(false);
 
-  /**
-   * Gera uma string alfanumérica aleatória.
-   *
-   * @param {number} length - O comprimento da string gerada.
-   * @returns {string} - A string alfanumérica aleatória.
-   */
   const generateRandomAlphanumeric = (length) => {
-    // Conjunto de caracteres alfanuméricos permitidos
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     const charactersLength = characters.length;
 
-    // Gera a string aleatória
     for (let i = 0; i < length; i++) {
       const randomIndex = Math.floor(Math.random() * charactersLength);
       result += characters[randomIndex];
@@ -42,39 +36,125 @@ export default function IncomeTab() {
   };
 
   const handleIncluir = async () => {
-    // Verifica se todos os campos estão preenchidos
     if (!cliente || !destino || !frete || !adiantamento || !peso) {
       Alert.alert('Erro', 'Todos os campos devem ser preenchidos.');
-      return; // Retorna para interromper a execução se os campos não estiverem preenchidos
+      return;
     }
 
     const data = {
-      id:generateRandomAlphanumeric(10), // Gera um ID único
+      id: generateRandomAlphanumeric(10),
       cliente,
       destino,
       frete,
       adiantamento,
       peso,
+      comprovanteUri, // Armazena o URI do comprovante
     };
-
-    console.log(data)
 
     try {
       const storedData = await AsyncStorage.getItem('transport_data');
       const existingData = storedData ? JSON.parse(storedData) : [];
-      console.log('Dados existentes:', existingData); // Log para verificar os dados existentes
+
+      // Verifica se o comprovante já existe
+      const duplicate = existingData.some(item => item.comprovanteUri === comprovanteUri);
+      console.log(comprovanteUri)
+      if (duplicate) {
+        Alert.alert('Erro', 'Este comprovante já foi anexado anteriormente.');
+        return;
+      }
+
       const newDataList = [...existingData, data];
-      console.log('Novo registro:', data); // Log para verificar o novo registro
       await AsyncStorage.setItem('transport_data', JSON.stringify(newDataList));
       setDataList(newDataList);
+
+      // Limpa os campos após a inclusão
       setCliente('');
       setDestino('');
       setFrete('');
       setAdiantamento('');
       setPeso('');
+      setComprovanteUri(null); // Limpa o URI do comprovante
+      comprovanteUri = null
     } catch (error) {
       console.log('Erro ao armazenar os dados:', error);
     }
+  };
+
+  const handleCloseComprovanteModal = () => {
+    setIsComprovanteModalVisible(false);
+    setComprovanteUri(null); // Limpa o URI do comprovante após fechar o modal
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar a câmera.');
+      return;
+    }
+  
+    const pickerResult = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+  
+    if (!pickerResult.canceled) {
+      setComprovanteUri(pickerResult.assets[0].uri);
+    }
+  };
+
+  const handleComprovante = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar a galeria.');
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!pickerResult.canceled) {
+      setComprovanteUri(pickerResult.assets[0].uri);
+    }
+  };
+
+  const handleMoreOptions = (item) => {
+    Alert.alert(
+      'Opções',
+      'Escolha uma ação',
+      [
+        {
+          text: 'Ver Comprovante',
+          onPress: () => {
+            if (item.comprovanteUri) {
+              setComprovanteUri(item.comprovanteUri); // Define o URI do comprovante selecionado
+              setIsComprovanteModalVisible(true); // Abre o modal para exibir o comprovante
+            } else {
+              Alert.alert('Aviso', 'Nenhum comprovante foi anexado.');
+            }
+          },
+        },
+        {
+          text: 'Editar',
+          onPress: () => handleEdit(item),
+        },
+        {
+          text: 'Excluir',
+          onPress: () => handleDelete(item),
+          style: 'destructive',
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const handleEdit = (item) => {
@@ -120,35 +200,13 @@ export default function IncomeTab() {
             try {
               const storedData = await AsyncStorage.getItem('transport_data');
               const existingData = storedData ? JSON.parse(storedData) : [];
-              const updatedDataList = existingData.filter(data => data.id !== item.id); // Filtra por ID
+              const updatedDataList = existingData.filter(data => data.id !== item.id);
               await AsyncStorage.setItem('transport_data', JSON.stringify(updatedDataList));
               setDataList(updatedDataList);
             } catch (error) {
               console.log('Erro ao excluir os dados:', error);
             }
           },
-        },
-      ]
-    );
-  };
-
-  const handleMoreOptions = (item) => {
-    Alert.alert(
-      'Opções',
-      'Escolha uma ação',
-      [
-        {
-          text: 'Editar',
-          onPress: () => handleEdit(item),
-        },
-        {
-          text: 'Excluir',
-          onPress: () => handleDelete(item),
-          style: 'destructive',
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
         },
       ]
     );
@@ -183,6 +241,7 @@ export default function IncomeTab() {
         console.log('Erro ao carregar os dados:', error);
       }
     };
+
     loadData();
   }, []);
 
@@ -227,7 +286,7 @@ export default function IncomeTab() {
             style={styles.input}
             value={adiantamento}
             onChangeText={setAdiantamento}
-            placeholder="Valor do adiantamento"
+            placeholder="Adiantamento"
             keyboardType="numeric"
           />
         </View>
@@ -237,83 +296,99 @@ export default function IncomeTab() {
             style={styles.input}
             value={peso}
             onChangeText={setPeso}
-            placeholder="Peso"
+            placeholder="Peso da carga"
             keyboardType="numeric"
           />
         </View>
       </View>
-
       <View style={styles.row}>
-        <TouchableOpacity style={styles.incluirButton} onPress={handleIncluir}>
-          <MaterialIcons name="add" size={20} color="white" />
-          <Text style={styles.incluirButtonText}>Incluir</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.comprovanteButton}>
-          <MaterialIcons name="image" size={20} color="white" />
-          <Text style={styles.comprovanteButtonText}>Comprovante</Text>
-        </TouchableOpacity>
+        <View style={styles.row}>
+
+          <TouchableOpacity style={styles.incluirButton} onPress={handleIncluir}>
+            <MaterialIcons name="add" size={20} color="#fff" />
+            <Text style={styles.incluirButtonText}>Incluir</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.comprovanteButton} onPress={handleComprovante}>
+            <MaterialIcons name="photo" size={20} color="#fff" />
+            <Text style={styles.comprovanteButtonText}>Galeria</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.cameraButton} onPress={handleCamera}>
+            <MaterialIcons name="camera-alt" size={20} color="#fff" />
+            <Text style={styles.cameraButtonText}>Câmera</Text>
+          </TouchableOpacity>
+
+        </View>
       </View>
 
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderText} numberOfLines={1}>Cliente</Text>
-          <Text style={styles.tableHeaderText} numberOfLines={1}>Destino</Text>
-          <Text style={styles.tableHeaderText} numberOfLines={1}>Frete</Text>
-          <Text style={styles.tableHeaderText} numberOfLines={1}>Ações</Text>
+      {comprovanteUri && (
+        <View style={styles.previewContainer}>
+          <Text style={styles.previewTitle}>Pré-visualização do Comprovante:</Text>
+          <Image source={{ uri: comprovanteUri }} style={styles.comprovantePreviewLarge} />
+          <Button title="Remover Pré-visualização" onPress={() => setComprovanteUri(null)} />
         </View>
-        <FlatList
-          data={dataList}
-          renderItem={renderItem}
-          keyExtractor={item => item.id} // Adiciona keyExtractor
-        />
-      </View>
+      )}
+
+      <FlatList
+        data={dataList}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+      />
 
       <Modal
-        transparent
         visible={isModalVisible}
+        animationType="slide"
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Editar Item</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editCliente}
-              onChangeText={setEditCliente}
-              placeholder="Cliente"
-            />
-            <TextInput
-              style={styles.modalInput}
-              value={editDestino}
-              onChangeText={setEditDestino}
-              placeholder="Destino"
-            />
-            <TextInput
-              style={styles.modalInput}
-              value={editFrete}
-              onChangeText={setEditFrete}
-              placeholder="Frete"
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              value={editAdiantamento}
-              onChangeText={setEditAdiantamento}
-              placeholder="Adiantamento"
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.modalInput}
-              value={editPeso}
-              onChangeText={setEditPeso}
-              placeholder="Peso"
-              keyboardType="numeric"
-            />
-            <View style={styles.modalButtons}>
-              <Button title="Salvar" onPress={handleSaveEdit} />
-              <Button title="Cancelar" onPress={() => setIsModalVisible(false)} color="red" />
-            </View>
-          </View>
+          <Text style={styles.modalTitle}>Editar Informações</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={editCliente}
+            onChangeText={setEditCliente}
+            placeholder="Cliente"
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={editDestino}
+            onChangeText={setEditDestino}
+            placeholder="Destino"
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={editFrete}
+            onChangeText={setEditFrete}
+            placeholder="Frete"
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={editAdiantamento}
+            onChangeText={setEditAdiantamento}
+            placeholder="Adiantamento"
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.modalInput}
+            value={editPeso}
+            onChangeText={setEditPeso}
+            placeholder="Peso"
+            keyboardType="numeric"
+          />
+          <Button title="Salvar" onPress={handleSaveEdit} />
+          <Button title="Cancelar" onPress={() => setIsModalVisible(false)} />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isComprovanteModalVisible}
+        animationType="slide"
+        onRequestClose={handleCloseComprovanteModal}
+      >
+        <View style={styles.modalContainer}>
+          <Image source={{ uri: comprovanteUri }} style={styles.comprovantePreviewLarge} />
+          <Button title="Fechar" onPress={handleCloseComprovanteModal} />
         </View>
       </Modal>
     </View>
@@ -333,6 +408,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flex: 1,
+    fontSize:15,
   },
   label: {
     fontSize: 14,
@@ -368,6 +444,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     padding: 10,
     borderRadius: 5,
+    marginRight: 10,
+
+  },
+  cameraButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0022ff',
+    padding: 10,
+    borderRadius: 5,
+  },
+  cameraButtonText: {
+    color: 'white',
+    marginLeft: 5,
+    fontWeight: 'bold',
   },
   comprovanteButtonText: {
     color: 'white',
@@ -438,5 +530,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'space-between',
+  },
+  comprovantePreviewLarge: {
+    width: '100%',
+    height: '70%',
+    marginBottom: 20,
+  },
+  previewContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  comprovantePreviewLarge: {
+    width: '100%',
+    height: 200,
+    marginBottom: 20,
   },
 });
