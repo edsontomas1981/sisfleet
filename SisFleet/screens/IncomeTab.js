@@ -4,6 +4,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
+import { formatCurrency } from '../assets/utils/formatCurrency';
+
+
 
 export default function IncomeTab() {
   const [cliente, setCliente] = useState('');
@@ -57,7 +60,6 @@ export default function IncomeTab() {
 
       // Verifica se o comprovante já existe
       const duplicate = existingData.some(item => item.comprovanteUri === comprovanteUri);
-      console.log(comprovanteUri)
       if (duplicate) {
         Alert.alert('Erro', 'Este comprovante já foi anexado anteriormente.');
         return;
@@ -74,7 +76,6 @@ export default function IncomeTab() {
       setAdiantamento('');
       setPeso('');
       setComprovanteUri(null); // Limpa o URI do comprovante
-      comprovanteUri = null
     } catch (error) {
       console.log('Erro ao armazenar os dados:', error);
     }
@@ -268,25 +269,29 @@ export default function IncomeTab() {
             placeholder="Destino"
           />
         </View>
+      </View>
+      <View style={styles.row}>
+
+      </View>
+      <View style={styles.row}>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Frete</Text>
           <TextInput
             style={styles.input}
             value={frete}
-            onChangeText={setFrete}
+            onChangeText={(text) => setFrete(formatCurrency(text))}
             placeholder="Valor do frete"
             keyboardType="numeric"
+            maxLength={10} // Limita o tamanho do campo para comportar o formato monetário
           />
         </View>
-      </View>
-      <View style={styles.row}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Adiantamento</Text>
+        <View style={styles.inputContainerElementosMeio}>
+          <Text style={styles.label} numberOfLines={1} >Adiantamento</Text>
           <TextInput
             style={styles.input}
             value={adiantamento}
             onChangeText={setAdiantamento}
-            placeholder="Adiantamento"
+            placeholder="Valor do adiantamento"
             keyboardType="numeric"
           />
         </View>
@@ -301,93 +306,96 @@ export default function IncomeTab() {
           />
         </View>
       </View>
-      <View style={styles.row}>
-        <View style={styles.row}>
-
-          <TouchableOpacity style={styles.incluirButton} onPress={handleIncluir}>
-            <MaterialIcons name="add" size={20} color="#fff" />
-            <Text style={styles.incluirButtonText}>Incluir</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.comprovanteButton} onPress={handleComprovante}>
-            <MaterialIcons name="photo" size={20} color="#fff" />
-            <Text style={styles.comprovanteButtonText}>Galeria</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cameraButton} onPress={handleCamera}>
-            <MaterialIcons name="camera-alt" size={20} color="#fff" />
-            <Text style={styles.cameraButtonText}>Câmera</Text>
-          </TouchableOpacity>
-
-        </View>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.buttonIncluir} onPress={handleIncluir}>
+          <View style={styles.iconButton}>
+            <MaterialIcons name="add" size={24} color="white" />
+            <Text style={styles.buttonText}>Incluir</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.buttonCamera} onPress={handleCamera}>
+          <View style={styles.iconButton}>
+            <MaterialIcons name="camera-alt" size={24} color="white" />
+            <Text style={styles.buttonText}>Câmera</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.buttonGaleria} onPress={handleComprovante}>
+          <View style={styles.iconButton}>
+            <MaterialIcons name="photo-library" size={24} color="white" />
+            <Text style={styles.buttonText}>Galeria</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
-      {comprovanteUri && (
-        <View style={styles.previewContainer}>
-          <Text style={styles.previewTitle}>Pré-visualização do Comprovante:</Text>
-          <Image source={{ uri: comprovanteUri }} style={styles.comprovantePreviewLarge} />
-          <Button title="Remover Pré-visualização" onPress={() => setComprovanteUri(null)} />
-        </View>
-      )}
+      <View style={styles.tableHeader}>
+        <Text style={[styles.tableHeaderCell, styles.headerText]}>Cliente</Text>
+        <Text style={[styles.tableHeaderCell, styles.headerText]}>Destino</Text>
+        <Text style={[styles.tableHeaderCell, styles.headerText]}>Frete</Text>
+        <Text style={[styles.tableHeaderCell, styles.headerText]}>Opções</Text>
+      </View>
 
       <FlatList
         data={dataList}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id}
       />
 
-      <Modal
-        visible={isModalVisible}
-        animationType="slide"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
+      <Modal visible={isModalVisible} animationType="slide">
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Editar Informações</Text>
+          <Text style={styles.modalTitle}>Editar Item</Text>
+
+          <Text style={styles.modalLabel}>Cliente</Text>
           <TextInput
             style={styles.modalInput}
             value={editCliente}
             onChangeText={setEditCliente}
-            placeholder="Cliente"
           />
+
+          <Text style={styles.modalLabel}>Destino</Text>
           <TextInput
             style={styles.modalInput}
             value={editDestino}
             onChangeText={setEditDestino}
-            placeholder="Destino"
           />
+
+          <Text style={styles.modalLabel}>Frete</Text>
           <TextInput
             style={styles.modalInput}
             value={editFrete}
             onChangeText={setEditFrete}
-            placeholder="Frete"
             keyboardType="numeric"
           />
+
+          <Text style={styles.modalLabel} numberOfLines={1}>Adiantamento</Text>
           <TextInput
             style={styles.modalInput}
             value={editAdiantamento}
             onChangeText={setEditAdiantamento}
-            placeholder="Adiantamento"
             keyboardType="numeric"
           />
+
+          <Text style={styles.modalLabel}>Peso</Text>
           <TextInput
             style={styles.modalInput}
             value={editPeso}
             onChangeText={setEditPeso}
-            placeholder="Peso"
             keyboardType="numeric"
           />
+
           <Button title="Salvar" onPress={handleSaveEdit} />
           <Button title="Cancelar" onPress={() => setIsModalVisible(false)} />
         </View>
       </Modal>
 
-      <Modal
-        visible={isComprovanteModalVisible}
-        animationType="slide"
-        onRequestClose={handleCloseComprovanteModal}
-      >
+      <Modal visible={isComprovanteModalVisible} animationType="slide" onRequestClose={handleCloseComprovanteModal}>
         <View style={styles.modalContainer}>
-          <Image source={{ uri: comprovanteUri }} style={styles.comprovantePreviewLarge} />
+          {comprovanteUri && (
+            <Image
+              source={{ uri: comprovanteUri }}
+              style={styles.modalImage}
+              resizeMode="contain" // Ajusta a imagem para caber no modal sem ser cortada
+            />
+          )}
           <Button title="Fechar" onPress={handleCloseComprovanteModal} />
         </View>
       </Modal>
@@ -399,156 +407,124 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   inputContainer: {
     flex: 1,
-    fontSize:15,
+  },
+  inputContainerElementosMeio: {
+    flex: 1,
+    marginRight:5,
+    marginLeft:5,
+  },
+  iconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   label: {
     fontSize: 14,
-    marginBottom: 5,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
-    backgroundColor: 'white',
+    fontSize: 16,
   },
-  incluirButton: {
-    flex: 1,
+  buttonContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#28a745',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  buttonIncluir: {
+    backgroundColor: '#007bff',
     padding: 10,
     borderRadius: 5,
-    marginRight: 10,
-  },
-  incluirButtonText: {
-    color: 'white',
-    marginLeft: 5,
-    fontWeight: 'bold',
-  },
-  comprovanteButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#333',
-    padding: 10,
-    borderRadius: 5,
-    marginRight: 10,
+    marginHorizontal: 5,
+  },
 
-  },
-  cameraButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0022ff',
+  buttonCamera: {
+    backgroundColor: '#565050',
     padding: 10,
     borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
   },
-  cameraButtonText: {
-    color: 'white',
-    marginLeft: 5,
-    fontWeight: 'bold',
-  },
-  comprovanteButtonText: {
-    color: 'white',
-    marginLeft: 5,
-    fontWeight: 'bold',
-  },
-  table: {
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#ccc',
+  buttonGaleria: {
+    backgroundColor: '#54bc34',
+    padding: 10,
     borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#e9ecef',
+    backgroundColor: '#f0f0f0',
     paddingVertical: 10,
     paddingHorizontal: 5,
+    marginBottom: 5,
   },
-  tableHeaderText: {
+  tableHeaderCell: {
     flex: 1,
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  headerText: {
+    fontSize: 16,
+  },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
     paddingVertical: 10,
     paddingHorizontal: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
   tableCell: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 14,
   },
   moreIconCell: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 0.5,
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    width: '80%',
     padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 5,
   },
   modalInput: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
-    backgroundColor: '#f0f0f0',
-    width: '100%',
-    marginBottom: 10,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between',
-  },
-  comprovantePreviewLarge: {
-    width: '100%',
-    height: '70%',
+    fontSize: 16,
     marginBottom: 20,
   },
-  previewContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  comprovantePreviewLarge: {
+  modalImage: {
     width: '100%',
-    height: 200,
+    height: 300,
     marginBottom: 20,
   },
 });
